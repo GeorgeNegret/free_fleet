@@ -19,6 +19,7 @@ import time
 import unittest
 
 from free_fleet_adapter.nav2_robot_adapter import Nav2RobotAdapter
+from free_fleet_adapter.robot_adapter import ExecutionHandle
 import rclpy
 from tf2_ros import Buffer
 
@@ -50,9 +51,11 @@ class TestNav2RobotAdapter(unittest.TestCase):
                 robot_config_yaml={
                     'initial_map': 'L1',
                 },
+                plugin_config=None,
                 node=self.node,
                 zenoh_session=self.zenoh_session,
                 fleet_handle=None,
+                fleet_config=None,
                 tf_buffer=tf_buffer
             )
             robot_found = True
@@ -71,9 +74,11 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
 
@@ -89,9 +94,11 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
 
@@ -107,12 +114,15 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
-        assert robot_adapter._is_navigation_done()
+        robot_adapter.exec_handle = ExecutionHandle(None)
+        assert robot_adapter._is_navigation_done(robot_adapter.exec_handle)
 
     def test_robot_stop_without_command(self):
         tf_buffer = Buffer()
@@ -123,15 +133,18 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
-        assert robot_adapter.execution is None
+        robot_adapter.exec_handle = ExecutionHandle(None)
+        assert robot_adapter.exec_handle.execution is None
         robot_adapter.stop(None)
-        assert robot_adapter.execution is None
-        assert robot_adapter._is_navigation_done()
+        assert robot_adapter.exec_handle.execution is None
+        assert robot_adapter._is_navigation_done(robot_adapter.exec_handle)
 
     def test_robot_handle_navigate_to_invalid_map(self):
         tf_buffer = Buffer()
@@ -142,19 +155,23 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
 
         prev_replan_count = robot_adapter.replan_counts
+        robot_adapter.exec_handle = ExecutionHandle(None)
         robot_adapter._handle_navigate_to_pose(
             'invalid_map',
             0.0,
             1.0,
             2.0,
-            0.0
+            0.0,
+            robot_adapter.exec_handle
         )
         assert robot_adapter.replan_counts == prev_replan_count + 1
 
@@ -167,21 +184,25 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
+        robot_adapter.exec_handle = ExecutionHandle(None)
 
         robot_adapter._handle_navigate_to_pose(
             'L1',
             -0.395,
             -0.606,
             0.0,
-            0.0
+            0.0,
+            robot_adapter.exec_handle
         )
         time.sleep(5)
-        assert robot_adapter._is_navigation_done()
+        assert robot_adapter._is_navigation_done(robot_adapter.exec_handle)
 
     def test_robot_stop_navigate(self):
         tf_buffer = Buffer()
@@ -192,24 +213,28 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
+        robot_adapter.exec_handle = ExecutionHandle(None)
 
         robot_adapter._handle_navigate_to_pose(
             'L1',
             1.808,
             0.503,
             0.0,
-            0.0
+            0.0,
+            robot_adapter.exec_handle
         )
-        assert not robot_adapter._is_navigation_done()
+        assert not robot_adapter._is_navigation_done(robot_adapter.exec_handle)
         time.sleep(1)
         robot_adapter._handle_stop_navigation()
         time.sleep(1)
-        assert robot_adapter._is_navigation_done()
+        assert robot_adapter._is_navigation_done(robot_adapter.exec_handle)
 
     def test_robot_execute_unknown_action(self):
         tf_buffer = Buffer()
@@ -220,9 +245,11 @@ class TestNav2RobotAdapter(unittest.TestCase):
             robot_config_yaml={
                 'initial_map': 'L1',
             },
+            plugin_config=None,
             node=self.node,
             zenoh_session=self.zenoh_session,
             fleet_handle=None,
+            fleet_config=None,
             tf_buffer=tf_buffer
         )
 

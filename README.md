@@ -1,6 +1,6 @@
 # Free Fleet
 
-![Nightly](https://github.com/open-rmf/free_fleet/actions/workflows/nightly.yaml/badge.svg)![Unit tests](https://github.com/open-rmf/free_fleet/actions/workflows/unit-tests.yaml/badge.svg)![Nav2 Integration tests](https://github.com/open-rmf/free_fleet/actions/workflows/nav2-integration-tests.yaml/badge.svg)![Nav1 Integration tests](https://github.com/open-rmf/free_fleet/actions/workflows/nav1-integration-tests.yaml/badge.svg)[![codecov](https://codecov.io/github/open-rmf/free_fleet/graph/badge.svg?token=JCOB9g3YTn)](https://codecov.io/github/open-rmf/free_fleet)
+[![Nightly](https://github.com/open-rmf/free_fleet/actions/workflows/nightly.yaml/badge.svg)](https://github.com/open-rmf/free_fleet/actions/workflows/nightly.yaml)[![Unit tests](https://github.com/open-rmf/free_fleet/actions/workflows/unit-tests.yaml/badge.svg)](https://github.com/open-rmf/free_fleet/actions/workflows/unit-tests.yaml)[![Nav2 Integration tests](https://github.com/open-rmf/free_fleet/actions/workflows/nav2-integration-tests.yaml/badge.svg)](https://github.com/open-rmf/free_fleet/actions/workflows/nav2-integration-tests.yaml)[![Nav1 Integration tests](https://github.com/open-rmf/free_fleet/actions/workflows/nav1-integration-tests.yaml/badge.svg)](https://github.com/open-rmf/free_fleet/actions/workflows/nav1-integration-tests.yaml)[![codecov](https://codecov.io/github/open-rmf/free_fleet/graph/badge.svg?token=JCOB9g3YTn)](https://codecov.io/github/open-rmf/free_fleet)
 
 - **[Introduction](#introduction)**
 - **[Dependency installation, source build and setup](#dependency-installation-source-build-and-setup)**
@@ -27,7 +27,7 @@ Supports
 * [ROS 2 Jazzy](https://docs.ros.org/en/jazzy/index.html)
 * [rmw-cyclonedds-cpp](https://github.com/ros2/rmw_cyclonedds)
 * [Open-RMF binaries on ROS 2 Jazzy](https://github.com/open-rmf/rmf)
-* [zenoh-bridge-ros2dds v1.1.0](https://github.com/eclipse-zenoh/zenoh-plugin-ros2dds/releases/tag/1.1.0)
+* [zenoh-bridge-ros2dds v1.5.0](https://github.com/eclipse-zenoh/zenoh-plugin-ros2dds/releases/tag/1.5.0)
 * [zenoh-bridge-ros1 main](https://github.com/eclipse-zenoh/zenoh-plugin-ros1)
 * [zenoh router](https://zenoh.io/docs/getting-started/installation/#ubuntu-or-any-debian)
 
@@ -48,7 +48,7 @@ sudo apt update && sudo apt install python3-pip ros-jazzy-rmw-cyclonedds-cpp
 The dependencies `nudged`, `eclipse-zenoh`, `pycdr2`, `rosbags` are available through `pip`. Users can choose to set up a virtual environment, or `--break-system-packages` by performing the installation directly.
 
 ```bash
-pip3 install nudged eclipse-zenoh==1.1.0 pycdr2 rosbags --break-system-packages
+pip3 install nudged eclipse-zenoh==1.5.0 pycdr2 rosbags --break-system-packages
 ```
 
 Install `zenohd` from the [official guide](https://zenoh.io/docs/getting-started/installation/#ubuntu-or-any-debian).
@@ -72,7 +72,7 @@ Download and extract standalone binaries for `zenoh-bridge-ros2dds` (optionally 
 
 ```bash
 # Change preferred zenoh version here
-export ZENOH_VERSION=1.1.0
+export ZENOH_VERSION=1.5.0
 
 # Download and extract zenoh-bridge-ros2dds release
 wget -O zenoh-plugin-ros2dds.zip https://github.com/eclipse-zenoh/zenoh-plugin-ros2dds/releases/download/$ZENOH_VERSION/zenoh-plugin-ros2dds-$ZENOH_VERSION-x86_64-unknown-linux-gnu-standalone.zip
@@ -106,6 +106,7 @@ Launch simulation and set up the initial position of the robot (see gif),
 ```bash
 source /opt/ros/jazzy/setup.bash
 export RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+export TURTLEBOT3_MODEL=waffle
 export GAZEBO_MODEL_PATH=$GAZEBO_MODEL_PATH:~/turtlebot3_simulations/turtlebot3_gazebo/models
 
 # Launch the simulation
@@ -185,6 +186,30 @@ ros2 run rmf_demos_tasks dispatch_patrol \
   -p north_west north_east south_east south_west \
   -n 2 \
   -st 0
+```
+
+Dispatch example custom actions `hello_world` and `delayed_hello_world`. These example custom actions simply prints messages, and can be observed in the terminal logs.
+
+```bash
+source ~/ff_ws/install/setup.bash
+export ROS_DOMAIN_ID=55
+
+# hello_world
+ros2 run rmf_demos_tasks dispatch_action -st 0 -a hello_world
+
+# hello_world with user name in description
+ros2 run rmf_demos_tasks dispatch_action -st 0 -a hello_world \
+  -ad '{"user": "John Doe"}'
+
+# delayed_hello_world, default as 5 seconds
+ros2 run rmf_demos_tasks dispatch_action -st 0 -a delayed_hello_world
+
+# delayed_hello_world with user name and custom wait duration in description
+ros2 run rmf_demos_tasks dispatch_action -st 0 -a delayed_hello_world \
+  -ad '{"user": "Jane Doe", "wait_duration_sec": 20}'
+
+# While a `delayed_hello_world` is ongoing, users can also trigger a cancellation manually on the action, which will cause the task to be cancelled as well.
+ros2 topic pub --once  /cancel_delayed_hello_world std_msgs/msg/Empty "{}"
 ```
 
 ### Nav2 Multiple turtlebot3 world
@@ -368,25 +393,7 @@ ros2 run rmf_demos_tasks dispatch_patrol \
 
 ## Troubleshooting
 
-* Looking for the legacy implementation of `free_fleet`? Check out the tag [1.3.0](https://github.com/open-rmf/free_fleet/releases/tag/1.3.0), or the [`legacy`](https://github.com/open-rmf/free_fleet/tree/legacy) branch.
-
-* `free_fleet_adapter` can't seem to control the robots? Check if the zenoh messages are going through using the testing scripts in `free_fleet_examples`. For ROS 2 navigation stacks, make sure that the `zenoh-bridge-ros2dds` is launched with the same `RMW_IMPLEMENTATION` and `ROS_DOMAIN_ID` as the robot's navigation stack, otherwise no messages will be passed through the bridge.
-
-* Failing to start `free_fleet_adapter` due to missing API in `rmf_fleet_adapter_python`? This may be due to using outdated `rmf_fleet_adapter_python` released binaries, either perform a `sudo apt update && sudo apt upgrade`, or build RMF from source following the [official guide](https://github.com/open-rmf/rmf).
-
-* Simulations don't seem to work properly anymore? Try `ros2 deamon stop`, `ros2 daemon start`, or explicitly kill the `ros` and `gazebo` processes, or restart your machine. It's been noticed that if the ROS 2 or gazebo process are not terminated properly (happens rarely), the network traffic between the simulation robots and the fleet adapter get affected.
-
-* ROS 1 Navigation stack simulation does not seem to work as expected? Check out the [integration tests docker compose](.github/docker/integration-tests/nav1-docker-compose.yaml), as well as the [simulation](.github/docker/minimal-ros1-sim/Dockerfile) and [bringup](.github/docker/minimal-nav1-bringup/Dockerfile) docker files, for any missing dependencies.
-
-* Why does RMF not run with `use_sim_time:=true` in the examples? This is because it is on a different `ROS_DOMAIN_ID` than the simulation, therefore it will not have access to the simulation `clock` topic, the examples running RMF, `free_fleet_adapter` and the tasks will not be using sim time.
-
-* For potential bandwidth issues, especially during multirobot sim example, spinning up a dedicated zenoh router and routing the `zenoh-bridge-ros2dds` manually to it, could help alleviate such issues.
-
-* If `zenoh` messages are not received, make sure the versions between the `eclipse-zenoh` in `pip`, `zenoh-bridge-ros2dds` and `zenohd` are all the same. If the debian binary releases of `zenohd` have breaking changes, and the repo has not yet migrate to the newer version, please open an issue ticket and we will look into migrating as soon as possible. In the meantime, using an older standalone release of `zenohd` would be a temporary workaround. Our integration tests will attempt to catch these breaking changes too.
-
-* `zenohd` address already in use. This is most likely due to the `rest-http-port` which uses port 8000 by default, and might cause a conflict with other systems, for example `rmf-web`'s API server. Run `zenohd --rest-http-port 8001` to change it to 8001 or anything else.
-
-* Please also check past or [existing issues on this repository](https://github.com/open-rmf/free_fleet/issues), or any discussions on the main [RMF discussion page](https://github.com/open-rmf/rmf/discussions).
+Check out the [Troubleshooting wiki](https://github.com/open-rmf/free_fleet/wiki/Troubleshooting).
 
 ## Contributing
 
@@ -399,7 +406,6 @@ ros2 run rmf_demos_tasks dispatch_patrol \
 ## TODOs
 
 * attempt to optimize tf messages (not all are needed)
-* custom actions to be abstracted
 * map switching support
 * test replanning behavior
 * support for Rolling
